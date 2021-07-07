@@ -3,6 +3,10 @@ import functools
 import time
 
 
+from expiringdict import ExpiringDict
+from datetime import datetime, timedelta
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,35 +27,23 @@ def timer(func):
     return wrapper_timer
 
 
-def cache(size_limit=0, ttl=0):
-    """lru_cache but with expiry"""
+def cache(max_len=128, max_age_seconds=60):
+    """Basic lru cache with expiry."""
 
     def decorator(func):
-        storage = {}
-        ttls = {}
+        storage = ExpiringDict(max_len=max_len, max_age_seconds=max_age_seconds)
 
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             key = (*args,) + tuple([(k, v) for k, v in kwargs.items()])
             if key in storage:
-                result = storage[key]
-                logger.debug(f"Found cached result {result}")
+                value = storage[key]
+                logger.debug(f"Found cached result {value}")
             else:
-                result = func(*args, **kwargs)
-                storage[key] = result
-                if ttl != 0:
-                    ttls[key] = time.time() + ttl
-                if size_limit != 0 and len(storage) > size_limit:
-                    oldest_key = list(storage.keys())[0]
-                    del storage[oldest_key]
-            if ttl != 0:
-                while len(storage.keys()):
-                    oldest_key = list(storage.keys())[0]
-                    if ttls[oldest_key] < time.time():
-                        del storage[oldest_key]
-                        logger.debug(f"Clearing old key: {oldest_key}")
-                    else:
-                        break
-            return result
+                value = func(*args, **kwargs)
+                logger.debug(f"No cached result, writing through: {key}: {value}")
+                storage[key] = value
+            return value
 
         return wrapper
 

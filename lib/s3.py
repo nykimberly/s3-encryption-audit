@@ -25,7 +25,7 @@ def get_s3_bucket_names(s3_client: "botocore.client.S3") -> List[str]:
 
 
 @core.perf.timer
-@core.perf.cache(ttl=3600)
+@core.perf.cache(max_age_seconds=3600)
 def get_bucket_region(s3_client: "botocore.client.S3", bucket_name: str) -> str:
     """Returns the region a bucket resides in.
 

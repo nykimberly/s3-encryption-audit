@@ -20,7 +20,7 @@ tl = Timeloop()
 logger = logging.getLogger(__name__)
 
 
-@tl.job(interval=timedelta(seconds=5))
+@tl.job(interval=timedelta(minutes=5))
 @core.perf.timer
 def s3_encryption_audit(region_name: str = "us-west-2"):
     """Checks encryption configuration on s3 buckets."""
@@ -51,12 +51,24 @@ if __name__ == "__main__":
         type=lambda x: getattr(logging, x.upper()),
         help="Configure core.perf logging level.",
     )
+    parser.add_argument(
+        "--log-to-file",
+        type=str,
+        help="Configure where logger outputs",
+    )
     args = parser.parse_args()
 
-    logging.basicConfig(
-        format="[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    kwargs = {
+        "format": "[%(asctime)s] [%(levelname)s] %(message)s",
+        "datefmt": "%Y-%m-%d %H:%M:%S",
+    }
+    if args.log_to_file:
+        print(f"logging to {args.log_to_file}")
+        kwargs["filename"] = args.log_to_file
+    logging.basicConfig(**kwargs)
+
     logger.setLevel(args.log_level)
+
     logging.getLogger("core.perf").setLevel(args.perf_log_level)
 
     tl.start(block=True)
